@@ -6,18 +6,20 @@ for the developer and share the same life cycle. If the code changes, changing t
 
 ## Build and Run
 
-- Install `ag` (You can find it searching *The Silver Searcher*)
+- Install `ripgrep`
+- Install `go` compiler
 
+## How it works?
 
-## TODO
+Using `rg` command to find block of comments matching what we define as *docblock*. Pass that to anothe layer of `rg` to
+filter out unnecessary data. What remains are many lines separated by a `@doctor` at the beginning of the some of lines.
+Now we can group these group based on simple groupings we have using our Go code.
 
-- [ ] What is commenting in the target text?
-- [ ] What is the pattern that flags a part of code as a documentation?
-- [ ] We need to include h1, h2, ..., h6 into consideration.
-- [ ] Can we use `ag -i --php -0 --nofilename --nobreak --nocolor '/\*+?\s*?\@doctor(.*?\n)*?.*?\*/' ~/Documents/Code/Digikala/supernova-env-dev/vendor/digikala`
-    - Then we feed the output to a program to convert it to markdown.
-    - Pass that markdown to another program to create a web page from it.
-    - [ ] Which one is faster? more customizable? more presentable?
+## Notes
+
+- [ ] How are we going to sort parapraghs of each section to keep the order the same when generating the document multiple times in a row?
+- [ ] mermaid.js, pandoc, ... for markdown to html.
+- [ ] some thing like tags maybe?
 
 ## Ideas
 

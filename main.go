@@ -7,91 +7,123 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 )
 
 var (
-	doctorRegex = regexp.MustCompile(`^/\*+?\s+?\@doctor`)
+	doctorRegex = regexp.MustCompile(`^@doctor`)
 
-	headerTemplate = "$header"
-	headerRegexes  = []*regexp.Regexp{
-		regexp.MustCompile(`^\*+?\s+?(?P<header>\#\s+?.*)$`),
-		regexp.MustCompile(`^\*+?\s+?(?P<header>\##\s+?.*)$`),
-		regexp.MustCompile(`^\*+?\s+?(?P<header>\###\s+?.*)$`),
-		regexp.MustCompile(`^\*+?\s+?(?P<header>\####\s+?.*)$`),
-		regexp.MustCompile(`^\*+?\s+?(?P<header>\#####\s+?.*)$`),
-		regexp.MustCompile(`^\*+?\s+?(?P<header>\######\s+?.*)$`),
+	groupingRegexes = []*regexp.Regexp{
+		regexp.MustCompile(`^#\s[^#]`),
+		regexp.MustCompile(`^##\s[^#]`),
+		regexp.MustCompile(`^###\s[^#]`),
+		regexp.MustCompile(`^####\s[^#]`),
+		regexp.MustCompile(`^#####\s[^#]`),
+		regexp.MustCompile(`^######\s[^#]`),
 	}
-
-	leadingRegex  = regexp.MustCompile(`^\s*\**\s`)
-	trailingRegex = regexp.MustCompile(`\*/`)
 )
 
 func main() {
 	i := NewLastLines(bufio.NewReader(os.Stdin), 2)
 
-	for ii := 0; ii < 100; ii++ {
-		// fmt.Printf("=> i: %#v\n", i)
-		line, err := i.ReadLine()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			log.Fatal(err)
-		}
-		line = strings.Trim(line, " \t\n\r")
-		// fmt.Printf("=> %v\n", line)
-
-		if doctorRegex.MatchString(line) {
-			// Extracting group information
-			headers, err := extractGroup(i)
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				log.Fatal(err)
+	var gs group
+	p := make(pointer)
+	err := func() error {
+		var grouping []string
+		var gsum string
+		for {
+			line, err := i.ReadLine()
+			if err != nil {
+				return err
 			}
 
-			fmt.Printf("%v\n", headers)
-		} else {
-			fmt.Printf("%s\n", removeTrailing(removeLeading(line)))
+			if doctorRegex.MatchString(line) {
+				grouping, err = extractGroup(i)
+				if err != nil {
+					return err
+				}
+				gsum = strings.Join(grouping, "")
+			} else {
+				if c, ok := p[gsum]; ok {
+					c.WriteString(line)
+				} else {
+					p[gsum] = gs.add(grouping, line)
+				}
+			}
 		}
-
+	}()
+	if err != nil && err != io.EOF {
+		log.Fatal(err)
 	}
+
+	gs.print()
 }
 
 func extractGroup(i *LastLines) ([]string, error) {
-	headers := []string{}
-	for len(headers) < 6 {
-		// fmt.Printf("==> i: %#v\n", i)
+	grouping := make([]string, 0, 2)
+	for {
 		line, err := i.ReadLine()
 		if err != nil {
-			// fmt.Printf("==> err: %v\n", err)
 			i.JumpBack(1)
-			return headers, err
-		}
-		line = strings.Trim(line, " \t\n\r")
-
-		p := headerRegexes[len(headers)]
-		if !p.MatchString(line) {
-			// fmt.Printf("==> no: %v\n", line)
-			// fmt.Printf("==> i: %#v\n", i)
-			i.JumpBack(1)
-			// fmt.Printf("==> i: %#v\n", i)
-			return headers, nil
+			return grouping, err
 		}
 
-		for _, submatches := range p.FindAllStringSubmatchIndex(line, -1) {
-			headers = append(headers, string(p.ExpandString(nil, headerTemplate, line, submatches)))
+		if !groupingRegexes[len(grouping)].MatchString(line) {
+			i.JumpBack(1)
+			return grouping, nil
 		}
-		// fmt.Printf("==> h: %v\n", headers)
+
+		grouping = append(grouping, line)
+	}
+}
+
+type group struct {
+	childs  titleGroupMap
+	content *strings.Builder
+}
+
+type titleGroupMap map[string]group
+
+type pointer map[string]*strings.Builder
+
+func (g *group) add(grouping []string, line string) *strings.Builder {
+	if len(grouping) == 0 {
+		if g.content == nil {
+			g.content = new(strings.Builder)
+		}
+		g.content.WriteString(line)
+		return g.content
 	}
 
-	return headers, nil
+	if g.childs == nil {
+		g.childs = make(titleGroupMap)
+	}
+
+	if child, ok := g.childs[grouping[0]]; !ok {
+		c := child.add(grouping[1:], line)
+		g.childs[grouping[0]] = child
+		return c
+	} else {
+		return child.add(grouping[1:], line)
+	}
 }
 
-func removeLeading(line string) string {
-	return leadingRegex.ReplaceAllLiteralString(line, "")
-}
+func (g *group) print() {
+	if g.content != nil {
+		fmt.Print(g.content.String() + "\n")
+	}
 
-func removeTrailing(line string) string {
-	return trailingRegex.ReplaceAllLiteralString(line, "")
+	titles := make([]string, 0, len(g.childs))
+	for t := range g.childs {
+		titles = append(titles, t)
+	}
+
+	sort.Strings(titles)
+
+	for _, t := range titles {
+		c := g.childs[t]
+		fmt.Printf("%s\n", t)
+		c.print()
+	}
 }
