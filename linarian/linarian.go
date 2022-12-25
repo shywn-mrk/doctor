@@ -1,18 +1,18 @@
-package main
+package linarian
 
 import (
 	"bufio"
 )
 
-type LastLines struct {
+type Linarian struct {
 	r       *bufio.Reader
 	lines   []string
 	current int
 	latest  int
 }
 
-func NewLastLines(r *bufio.Reader, capacity int) *LastLines {
-	return &LastLines{
+func New(r *bufio.Reader, capacity int) *Linarian {
+	return &Linarian{
 		r:       r,
 		lines:   make([]string, capacity),
 		current: 0,
@@ -20,7 +20,7 @@ func NewLastLines(r *bufio.Reader, capacity int) *LastLines {
 	}
 }
 
-func (l *LastLines) ReadLine() (string, error) {
+func (l *Linarian) ReadLine() (string, error) {
 	if l.current != l.latest {
 		l.current = (1 + l.current) % len(l.lines)
 		return l.lines[l.current], nil
@@ -37,22 +37,7 @@ func (l *LastLines) ReadLine() (string, error) {
 	return line, err
 }
 
-func (l LastLines) GetFromLatest(backSteps int) (string, error) {
-	backSteps %= len(l.lines)
-
-	return l.lines[(backSteps+l.latest+len(l.lines))%len(l.lines)], nil
-}
-
-func (l LastLines) Get(backSteps int) (string, error) {
-	distance := l.latest - l.current
-	if distance < 0 {
-		distance += len(l.lines)
-	}
-
-	return l.GetFromLatest(distance + backSteps)
-}
-
-func (l *LastLines) JumpBack(steps int) {
+func (l *Linarian) JumpBack(steps int) {
 	steps %= len(l.lines)
 
 	l.current = (l.latest - steps)

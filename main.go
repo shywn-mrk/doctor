@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/733amir/doctor/linarian"
 )
 
 var (
@@ -25,7 +27,7 @@ var (
 )
 
 func main() {
-	i := NewLastLines(bufio.NewReader(os.Stdin), 2)
+	i := linarian.New(bufio.NewReader(os.Stdin), 2)
 
 	var gs group
 	p := make(pointer)
@@ -44,12 +46,10 @@ func main() {
 					return err
 				}
 				gsum = strings.Join(grouping, "")
+			} else if c, ok := p[gsum]; ok {
+				c.WriteString(line)
 			} else {
-				if c, ok := p[gsum]; ok {
-					c.WriteString(line)
-				} else {
-					p[gsum] = gs.add(grouping, line)
-				}
+				p[gsum] = gs.add(grouping, line)
 			}
 		}
 	}()
@@ -60,7 +60,7 @@ func main() {
 	gs.print()
 }
 
-func extractGroup(i *LastLines) ([]string, error) {
+func extractGroup(i *linarian.Linarian) ([]string, error) {
 	grouping := make([]string, 0, 2)
 	for {
 		line, err := i.ReadLine()

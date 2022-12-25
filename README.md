@@ -6,8 +6,8 @@ for the developer and share the same life cycle. If the code changes, changing t
 
 ## Build and Run
 
-- Install `ripgrep`
-- Install `go` compiler
+1. Execute `setup.sh` and it should guide you through setting up the project.
+2. After that use `run.sh` and pass absolute/relative path to *supernova-env-dev* directory as its first argument.
 
 ## How it works?
 
@@ -20,6 +20,7 @@ Now we can group these group based on simple groupings we have using our Go code
 - [ ] How are we going to sort parapraghs of each section to keep the order the same when generating the document multiple times in a row?
 - [ ] mermaid.js, pandoc, ... for markdown to html.
 - [ ] some thing like tags maybe?
+- [ ] Can this project serve the static pages after creating them?
 
 ## Ideas
 
