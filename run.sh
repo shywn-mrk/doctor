@@ -2,6 +2,11 @@
 set -o nounset
 set -o errexit
 
+./setup.sh
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+
 marketplaceDir="$1/vendor/digikala/supernova-digikala-marketplace"
 if [ ! -d $marketplaceDir ]; then
     echo "Error: wrong path to supernova-env-dev"
@@ -25,7 +30,7 @@ fileLink="file://$doctorFile"
 
 unameOut="$(uname -s)"
 case "${unameOut}" in
-    Linux*)     xdg-open $fileLink;;
-    Darwin*)    open $fileLink;;
+    Linux*)     xdg-open $fileLink >> /dev/null;;
+    Darwin*)    open $fileLink >> /dev/null;;
     *)          echo "Open in your browser: $fileLink"
 esac

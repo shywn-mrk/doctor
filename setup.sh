@@ -1,42 +1,63 @@
 #!/usr/bin/env bash
 set -o nounset
 
+unameOut="$(uname -s)"
+case "${unameOut}" in
+    Linux*)     machine=linux;;
+    Darwin*)    machine=mac;;
+    *)          echo 'Operating System Not Supported. Contact Developer!'; exit 1;
+esac
+
 
 #################### Dependency Checking
 dep_go=1
-go version >> /dev/null 2>&1
-if [ $? -ne 0 ]; then
+go_version=$(go version 2>&1)
+if [ $? -ne 0 ] || [[ ! "$go_version" =~ .*go1\.1[89]\..* ]]; then
     dep_go=0
 fi
 
 dep_rg=1
-rg --version >> /dev/null 2>&1
-if [ $? -ne 0 ]; then
+rg_version=$(rg --version 2>&1)
+if [ $? -ne 0 ] || [[ ! "$rg_version" =~ .*ripgrep\ 13\..* ]]; then
     dep_rg=0
 fi
 
 dep_pandoc=1
-pandoc -v >> /dev/null 2>&1
-if [ $? -ne 0 ]; then
+pandoc_version=$(pandoc -v 2>&1)
+if [ $? -ne 0 ] || [[ ! "$pandoc_version" =~ .*pandoc\ 2\.19\..* ]]; then
     dep_pandoc=0
 fi
 
 
 if [ $dep_go -ne 1 ] || [ $dep_rg -ne 1 ] || [ $dep_pandoc -ne 1 ]; then
-    deps='Error: You need to install [ '
+    printf 'Error: You need to install\n'
+
     if [ $dep_go -ne 1 ]; then
-        deps="$deps Go Compiler, "
+        printf '* Go Compiler [v1.18.* and above]\n'
+        case "$machine" in
+        linux) printf '  - Run: sudo apt install golang\n';;
+        mac) printf '  - Run: brew install go\n';;
+        esac
     fi
+
     if [ $dep_rg -ne 1 ]; then
-        deps="$deps RipGrep, "
+        printf '* RipGrep [v13.*.* and above]\n'
+        case "$machine" in
+        linux) printf '  - Run: sudo apt install ripgrep\n';;
+        mac) printf '  - Run: brew install ripgrep\n';;
+        esac
     fi
+
     if [ $dep_pandoc -ne 1 ]; then
-        deps="$deps Pandoc, "
+        printf '* Pandoc [v2.19.*]\n'
+        case "$machine" in
+        linux)
+            printf '  - Download https://github.com/jgm/pandoc/releases/download/2.19.2/pandoc-2.19.2-1-amd64.deb\n'
+            printf '  - Run: sudo dpkg -i pandoc-2.19.2-1-amd64.deb\n'
+        ;;
+        mac) printf '  - Run: brew install pandoc\n';;
+        esac
     fi
-    deps="${deps::${#deps}-2} ]"
-    echo $deps
+
     exit 1
 fi
-
-
-echo "You can use run.sh script to generate documentation"

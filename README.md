@@ -25,3 +25,9 @@ Now we can group these group based on simple groupings we have using our Go code
 ## Ideas
 
 * Notify people when a section changes. They might need to know if the logic is changed.
+
+## TODO
+
+- [ ] `rg` should not consider `.gitignore`.
+- [ ] make shoud dependency versions are same same.
+- [ ] add more documentatio on how to install dependencies. Ex: `sudo apt install riggrep`
