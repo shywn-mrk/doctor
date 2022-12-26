@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 set -o nounset
 set -o errexit
+set -o pipefail
 
 ./setup.sh
 if [ $? -ne 0 ]; then
     exit 1
 fi
 
-marketplaceDir="$1/vendor/digikala/supernova-digikala-marketplace"
+envPath=$1
+if [ ! ${envPath::1} == '/' ] && [ ! ${envPath::1} == '~' ]; then
+    envPath="$(pwd)/$envPath"
+fi
+
+marketplaceDir="$envPath/vendor/digikala/supernova-digikala-marketplace"
 if [ ! -d $marketplaceDir ]; then
     echo "Error: wrong path to supernova-env-dev"
 fi
@@ -21,10 +27,18 @@ doctorFile="$doctorDir/index.html"
 
 go build -o doctor ./*.go
 
-rg -oUiIN --color never --crlf -E utf8 --no-heading --multiline-dotall --trim '/\*+\s*(@doctor.*?)\*/' --glob-case-insensitive -g '*.php' -r '$1' $1 | \
+markdown=$(rg -oUiIN --color never --crlf -E utf8 --no-heading --multiline-dotall --trim '/\*+\s*(@doctor.*?)\*/' --glob-case-insensitive -g '*.php' --no-ignore -r '$1' $envPath | \
     rg -oiIN --color never --crlf -E utf8 --no-heading '(\*\s?)?(.*)' -r '$2' | \
-    ./doctor | \
-    pandoc --from gfm --to html --standalone --metadata 'title="Seller Docs"' > $doctorFile
+    ./doctor) && \
+    printf "$markdown" | pandoc --from gfm --to html --standalone --metadata 'title="Seller Docs"' > $doctorFile
+
+# markdown=$(rg -oUiIN --color never --crlf -E utf8 --no-heading --multiline-dotall --trim '/\*+\s*(@doctor.*?)\*/' --glob-case-insensitive -g '*.php' --no-ignore -r '$1' $envPath | \
+#     rg -oiIN --color never --crlf -E utf8 --no-heading '(\*\s?)?(.*)' -r '$2' | \
+#     ./doctor) && printf "$markdown" > $doctorFile
+
+if [ $? -ne 0 ]; then
+    exit 1
+fi
 
 fileLink="file://$doctorFile"
 
