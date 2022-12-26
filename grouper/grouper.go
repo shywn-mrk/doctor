@@ -70,7 +70,7 @@ func (g *Group) build(b *strings.Builder) {
 
 	for _, t := range titles {
 		c := g.childs[t]
-		fmt.Fprintf(b, "%s\n", t)
+		fmt.Fprintf(b, "%s\n\n", t)
 		c.build(b)
 	}
 }
