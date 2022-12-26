@@ -28,6 +28,8 @@ type Group struct {
 	content *content
 }
 
+type titleToGroup map[string]*Group
+
 func (g *Group) add(grouping []string, line string) *content {
 	if len(grouping) == 0 {
 		if g.content == nil {
@@ -41,7 +43,8 @@ func (g *Group) add(grouping []string, line string) *content {
 		g.childs = make(titleToGroup)
 	}
 
-	if child, ok := g.childs[grouping[0]]; !ok {
+	if child, ok := g.childs[grouping[0]]; !ok || child == nil {
+		child = new(Group)
 		c := child.add(grouping[1:], line)
 		g.childs[grouping[0]] = child
 		return c
@@ -88,8 +91,6 @@ func (c *content) add(d string) {
 
 	c.WriteString(d)
 }
-
-type titleToGroup map[string]Group
 
 func Parse(i *linarian.Linarian) (string, error) {
 	var gs Group
