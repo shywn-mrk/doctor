@@ -33,7 +33,7 @@ markdown=$(rg -oUiIN --color never --crlf -E utf8 --no-heading --multiline-dotal
     rg -i --color never --crlf -E utf8 --passthru '^(\*\s?)?(.*)' -r '$2' |
     rg -i --color never --crlf -E utf8 --passthru '^/\*+?\s*?(@doctor.*)' -r '$1' |
     ./doctor) && \
-    printf "$markdown" |
+    echo "$markdown" |
     pandoc --from gfm --to html --standalone --metadata 'title="Seller Docs"' > $doctorFile
 
 # markdown=$(rg -oUiIN --color never --crlf -E utf8 --no-heading --multiline-dotall --trim '/\*+\s*(@doctor.*?)\*/' --glob-case-insensitive -g '*.php' --no-ignore -r '$1' $envPath | \
