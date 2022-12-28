@@ -27,10 +27,14 @@ doctorFile="$doctorDir/index.html"
 
 go build -o doctor ./*.go
 
-markdown=$(rg -oUiIN --color never --crlf -E utf8 --no-heading --multiline-dotall --trim '/\*+\s*(@doctor.*?)\*/' --glob-case-insensitive -g '*.php' --no-ignore -r '$1' $envPath | \
-    rg -oiIN --color never --crlf -E utf8 --no-heading '(\*\s?)?(.*)' -r '$2' | \
+
+markdown=$(rg -oUiIN --color never --crlf -E utf8 --no-heading --multiline-dotall --trim '/\*+?\s*?@doctor.*?\*/' --glob-case-insensitive -g '*.php' --no-ignore $envPath |
+    rg -i --color never --crlf -E utf8 --passthru '(.*)\*/' -r '$1' |
+    rg -i --color never --crlf -E utf8 --passthru '^(\*\s?)?(.*)' -r '$2' |
+    rg -i --color never --crlf -E utf8 --passthru '^/\*+?\s*?(@doctor.*)' -r '$1' |
     ./doctor) && \
-    printf "$markdown" | pandoc --from gfm --to html --standalone --metadata 'title="Seller Docs"' > $doctorFile
+    printf "$markdown" |
+    pandoc --from gfm --to html --standalone --metadata 'title="Seller Docs"' > $doctorFile
 
 # markdown=$(rg -oUiIN --color never --crlf -E utf8 --no-heading --multiline-dotall --trim '/\*+\s*(@doctor.*?)\*/' --glob-case-insensitive -g '*.php' --no-ignore -r '$1' $envPath | \
 #     rg -oiIN --color never --crlf -E utf8 --no-heading '(\*\s?)?(.*)' -r '$2' | \
