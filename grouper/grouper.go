@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/733amir/doctor/linarian"
 )
@@ -25,32 +26,39 @@ var (
 
 type Group struct {
 	childs  titleToGroup
-	content *content
+	content content
 }
 
 type titleToGroup map[string]*Group
 
-func (g *Group) add(grouping []string, line string) *content {
+func (g *Group) add(grouping []string, sortKey, line string) *strings.Builder {
 	if len(grouping) == 0 {
 		if g.content == nil {
-			g.content = new(content)
+			g.content = make(content)
 		}
-		g.content.add(line)
-		return g.content
+		return g.content.add(sortKey, line)
 	}
 
 	if g.childs == nil {
 		g.childs = make(titleToGroup)
 	}
 
-	if child, ok := g.childs[grouping[0]]; !ok || child == nil {
+	child, ok := g.childs[grouping[0]]
+	if !ok || child == nil {
 		child = new(Group)
-		c := child.add(grouping[1:], line)
-		g.childs[grouping[0]] = child
-		return c
-	} else {
-		return child.add(grouping[1:], line)
 	}
+	c := child.add(grouping[1:], sortKey, line)
+	g.childs[grouping[0]] = child
+	return c
+
+	// if child, ok := g.childs[grouping[0]]; !ok || child == nil {
+	// 	child = new(Group)
+	// 	c := child.add(grouping[1:], sortKey, line)
+	// 	g.childs[grouping[0]] = child
+	// 	return c
+	// } else {
+	// 	return child.add(grouping[1:], sortKey, line)
+	// }
 }
 
 func (g *Group) Build() string {
@@ -61,35 +69,39 @@ func (g *Group) Build() string {
 
 func (g *Group) build(b *strings.Builder) {
 	if g.content != nil {
-		fmt.Fprint(b, g.content.String()+"\n")
+		sortedContents := sortByKeys(g.content)
+
+		for _, c := range sortedContents {
+			fmt.Fprintf(b, c.value.String()+"\n")
+		}
 	}
 
-	titles := make([]string, 0, len(g.childs))
-	for t := range g.childs {
-		titles = append(titles, t)
-	}
+	sortedChilds := sortByKeys(g.childs)
 
-	sort.Strings(titles)
-
-	for _, t := range titles {
-		c := g.childs[t]
-		fmt.Fprintf(b, "%s\n\n", t)
-		c.build(b)
+	for _, c := range sortedChilds {
+		fmt.Fprintf(b, "%s\n\n", c.key)
+		c.value.build(b)
 	}
 }
 
-type contentPointer map[string]*content
+type contentPointer map[string]*strings.Builder
 
-type content struct {
-	strings.Builder
-}
+type content map[string]*strings.Builder
 
-func (c *content) add(d string) {
+func (c content) add(sortKey, d string) *strings.Builder {
 	if c == nil {
 		panic("content is nil")
 	}
 
-	c.WriteString(d)
+	b, ok := c[sortKey]
+	if !ok {
+		b = new(strings.Builder)
+	}
+
+	b.WriteString(d)
+	c[sortKey] = b
+
+	return b
 }
 
 func Parse(i *linarian.Linarian) (string, error) {
@@ -98,7 +110,8 @@ func Parse(i *linarian.Linarian) (string, error) {
 
 	err := func() error {
 		var grouping []string
-		var gsum string
+		var gsum, sortKey string
+		var ok bool
 		for {
 			line, err := i.ReadLine()
 			if err != nil {
@@ -106,15 +119,22 @@ func Parse(i *linarian.Linarian) (string, error) {
 			}
 
 			if doctorRegex.MatchString(line) {
+				options := extractOptions(line)
+
+				sortKey, ok = options["sort"]
+				if !ok {
+					sortKey = ""
+				}
+
 				grouping, err = extractGroup(i)
 				if err != nil {
 					return err
 				}
-				gsum = strings.Join(grouping, "")
+				gsum = strings.Join(grouping, "") + sortKey
 			} else if c, ok := p[gsum]; ok {
 				c.WriteString(line)
 			} else {
-				p[gsum] = gs.add(grouping, line)
+				p[gsum] = gs.add(grouping, sortKey, line)
 			}
 		}
 	}()
@@ -141,4 +161,53 @@ func extractGroup(i *linarian.Linarian) ([]string, error) {
 
 		grouping = append(grouping, strings.TrimSpace(line))
 	}
+}
+
+type options map[string]string
+
+func extractOptions(data string) options {
+	inQuote := false
+	f := func(c rune) bool {
+		switch {
+		case unicode.In(c, unicode.Quotation_Mark):
+			inQuote = !inQuote
+		case unicode.In(c, unicode.White_Space):
+			return !inQuote
+		}
+		return false
+	}
+	items := strings.FieldsFunc(data, f)
+
+	m := make(options)
+	for _, item := range items {
+		x := strings.Split(item, "=")
+		if len(x) < 2 {
+			continue
+		}
+
+		m[x[0]] = strings.Join(x[1:], "")
+	}
+
+	return m
+}
+
+type keyValue[V any] struct {
+	key   string
+	value V
+}
+
+func sortByKeys[V any](data map[string]V) []keyValue[V] {
+	result := make([]keyValue[V], 0, len(data))
+	for k, v := range data {
+		result = append(result, keyValue[V]{
+			key:   k,
+			value: v,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return strings.Compare(result[i].key, result[j].key) != 1
+	})
+
+	return result
 }
